@@ -146,18 +146,18 @@ public class SimpleCalculator {
     private SimpleASTNode additive(TokenReader tokens) throws Exception {
         SimpleASTNode child1 = multiplicative(tokens);
         SimpleASTNode node = child1;
-
-        Token token = tokens.peek();
-        if (child1 != null && token != null) {
-            if (token.getType() == TokenType.Plus || token.getType() == TokenType.Minus) {
-                token = tokens.read();
-                SimpleASTNode child2 = additive(tokens);
-                if (child2 != null) {
+        if (child1 != null) {
+            while(true) {
+                Token token = tokens.peek();
+                if (token != null && (token.getType() == TokenType.Plus || token.getType() == TokenType.Minus)) {
+                    token = tokens.read();
+                    SimpleASTNode child2 = multiplicative(tokens);
                     node = new SimpleASTNode(ASTNodeType.Additive, token.getText());
                     node.addChild(child1);
                     node.addChild(child2);
+                    child1 = node;
                 } else {
-                    throw new Exception("invalid additive expression, expecting the right part.");
+                    break;
                 }
             }
         }
