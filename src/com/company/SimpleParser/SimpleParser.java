@@ -257,7 +257,7 @@ public class SimpleParser {
         }
     }
 
-    private void dumpAST(ASTNode node, String indent) {
+    public void dumpAST(ASTNode node, String indent) {
         System.out.println(indent + node.getType() + " " + node.getText());
         for (ASTNode child : node.getChildren()) {
             dumpAST(child, indent + "\t");
