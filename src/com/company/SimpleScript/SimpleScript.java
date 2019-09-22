@@ -38,11 +38,10 @@ public class SimpleScript {
                     ASTNode tree = parser.parse(scriptText);
                     if (verbose) {
                         parser.dumpAST(tree, "");
-
-                        script.evaluate(tree, "");
-                        System.out.println("\n>");
-                        scriptText = "";
                     }
+                    script.evaluate(tree, "");
+                    System.out.println("\n>");
+                    scriptText = "";
                 }
             } catch (Exception e) {
                 System.out.println(e.getLocalizedMessage());
@@ -61,7 +60,7 @@ public class SimpleScript {
         switch(node.getType()) {
             case Programm:
                 for(ASTNode child : node.getChildren()) {
-                    result = evaluate(child, indent + "\t");
+                    result = evaluate(child, indent);
                 }
                 break;
             case Additive:
