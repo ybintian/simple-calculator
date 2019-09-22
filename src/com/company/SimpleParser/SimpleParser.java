@@ -1,150 +1,65 @@
-package com.company.SimpleCalculator;
+package com.company.SimpleParser;
 
-import com.company.SimpleLexer.SimpleLexer;
-import com.company.SimpleLexer.Token;
-import com.company.SimpleLexer.TokenReader;
-import com.company.SimpleLexer.TokenType;
+import com.company.SimpleCalculator.ASTNode;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
+import com.company.SimpleLexer.*;
+import com.company.SimpleCalculator.*;
 
-public class SimpleCalculator {
-    private HashMap<String, Integer> variables = new HashMap<String, Integer>();
-    private static boolean verbose = false;
+/**
+ * programm -> intDeclare | expressionStatement | assignmentStatement
+ * intDeclare -> 'int' Id ( = expressionStatement ) ';'
+ * expressionStatement -> additive ';'
+ * addtive -> multiplicative ((+ | -) multiplicative)
+ * multiplicative -> primary((* | /) primary)*
+ * primary -> IntLiteral | Id | (active)
+ */
 
+public class SimpleParser {
     public static void main(String[] args) {
-        SimpleCalculator calculator = new SimpleCalculator();
-        String script = "int a = b+3;";
-        System.out.println("解析变量申明语句：" + script);
-        SimpleLexer lexer = new SimpleLexer();
-        TokenReader tokens = lexer.tokenize(script);
+        System.out.println("hello my simple parser");
+        SimpleParser parser = new SimpleParser();
+        String script = null;
+        ASTNode tree = null;
 
         try {
-            SimpleASTNode node = calculator.intDeclare(tokens);
-            calculator.dumpAST(node, "");
+            script = "int age = 45 + 2; age = 20; age + 10 * 2;";
+            System.out.println("解析：" + script);
+            tree = parser.parse(script);
+            parser.dumpAST(tree, "");
         } catch(Exception e) {
             System.out.println(e.getMessage());
         }
-
-        //测试表达式
-        script = "2+3*5";
-        System.out.println("\n计算: " + script + "，看上去一切正常。");
-        calculator.evaluate(script);
-
-        //测试语法错误
-        script = "2+";
-        System.out.println("\n: " + script + "，应该有语法错误。");
-        calculator.evaluate(script);
-
-        script = "2+3+4";
-        System.out.println("\n计算: " + script + "，结合性出现错误。");
-        calculator.evaluate(script);
     }
 
-    public void evaluate(String script) {
-        try {
-            ASTNode tree = parse(script);
-            dumpAST(tree, "");
-            evaluate(tree, "");
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
-    public ASTNode parse(String code) throws Exception {
+    public ASTNode parse(String script) throws Exception {
         SimpleLexer lexer = new SimpleLexer();
-        TokenReader tokens = lexer.tokenize(code);
+        TokenReader tokens = lexer.tokenize(script);
         ASTNode rootNode = prog(tokens);
-
         return rootNode;
     }
 
-    private int evaluate(ASTNode node, String indent) throws Exception {
-        Integer result = null;
-        if (verbose) {
-            System.out.print(indent + "Calculator: " + node.getType());
-        }
-
-        switch(node.getType()) {
-        case Programm:
-            for(ASTNode child : node.getChildren()) {
-                result = evaluate(child, indent + "\t");
-            }
-            break;
-        case Additive:
-            ASTNode child1 = node.getChildren().get(0);
-            int value1 = evaluate(child1, indent + "\t");
-            ASTNode child2 = node.getChildren().get(1);
-            int value2 = evaluate(child2, indent + "\t");
-            if(node.getText().equals("+")) {
-                result = value1 + value2;
-            } else {
-                result = value1 - value2;
-            }
-            break;
-        case Multiplicative:
-            child1 = node.getChildren().get(0);
-            value1 = evaluate(child1, indent + "\t");
-            child2 = node.getChildren().get(1);
-            value2 = evaluate(child2, indent + "\t");
-            if(node.getText().equals("*")) {
-                result = value1 * value2;
-            } else {
-                result = value1 / value2;
-            }
-            break;
-        case IntLiteral:
-            result = Integer.valueOf(node.getText()).intValue();
-            break;
-        case Identifier:
-            String varName = node.getText();
-            if(variables.containsKey(varName)) {
-                Integer value = variables.get(varName);
-                if (value != null) {
-                    result = value.intValue();
-                } else {
-                    throw new Exception("unknown variable:" + varName);
-                }
-            }
-            break;
-        case AssignmentStmt:
-            varName = node.getText();
-            if (!variables.containsKey(varName)) {
-                throw new Exception("unknown variable:" + varName);
-            }
-        case IntDeclaration:
-            varName = node.getText();
-            Integer varValue = null;
-            if (node.getChildren().size() > 0) {
-                ASTNode child = node.getChildren().get(0);
-                result = evaluate(child, indent + "\t");
-                varValue = Integer.valueOf(result);
-            }
-            variables.put(varName, varValue);
-            break;
-        default:
-        }
-
-        if (verbose) {
-            System.out.println(indent + "Result:" + result);
-        } else if(indent.equals("")) {
-            if (node.getType() == ASTNodeType.IntDeclaration || node.getType() == ASTNodeType.AssignmentStmt) {
-                System.out.println(node.getText() + ":" + result);
-            } else if (node.getType() != ASTNodeType.Programm) {
-                System.out.println(result);
-            }
-        }
-        return result;
-    }
-
     private SimpleASTNode prog(TokenReader tokens) throws Exception {
-        SimpleASTNode node = new SimpleASTNode(ASTNodeType.Programm, "Calculator");
-        SimpleASTNode child = additive(tokens);
+        SimpleASTNode node = new SimpleASTNode(ASTNodeType.Programm, "pwc");
 
-        if (child != null) {
-            node.addChild(child);
+        while(tokens.peek() != null) {
+            SimpleASTNode child = intDeclare(tokens);
+
+            if (child == null) {
+                child = expressionStatement(tokens);
+            }
+
+            if (child == null) {
+                child = assignmentStatement(tokens);
+            }
+
+            if (child != null) {
+                node.addChild(child);
+            } else {
+                throw new Exception("unknown statement");
+            }
         }
 
         return node;
@@ -206,6 +121,9 @@ public class SimpleCalculator {
                         throw new Exception("invalid statement, expecting semicolon");
                     }
                 }
+            } else {
+                tokens.unread();
+                node = null;
             }
         } else {
             tokens.unread();
